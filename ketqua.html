@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Sách Trúng Thưởng</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #fbc02d;
+            text-transform: uppercase;
+            border-bottom: 2px solid #fbc02d;
+            padding-bottom: 10px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.05);
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+            font-size: 1.2rem;
+        }
+
+        th {
+            background-color: #d32f2f;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:hover {
+            background-color: rgba(251, 192, 45, 0.1);
+        }
+
+        .prize-col {
+            color: #fbc02d;
+            font-weight: bold;
+        }
+
+        .number-col {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 2px;
+        }
+
+        .new-record {
+            animation: highlight 2s ease-out;
+        }
+
+        @keyframes highlight {
+            0% {
+                background-color: #fbc02d;
+                color: #000;
+            }
+
+            100% {
+                background-color: transparent;
+                color: #fff;
+            }
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #777;
+            font-style: italic;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Bảng Vàng Danh Dự</h1>
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Giải Thưởng</th>
+                    <th>Con Số May Mắn</th>
+                    <th>Thời Gian</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+        <div id="emptyMsg" class="empty-msg">Chưa có kết quả quay số nào...</div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'luckyDrawData_v2';
+        let lastDataLength = 0;
+
+        function loadData() {
+            const dataStr = localStorage.getItem(STORAGE_KEY);
+            const data = JSON.parse(dataStr || '[]');
+            const tbody = document.getElementById('tableBody');
+            const emptyMsg = document.getElementById('emptyMsg');
+
+            // Nếu không có dữ liệu mới thì thôi (giúp tránh render lại làm nháy trang)
+            if (data.length === lastDataLength && data.length !== 0) return;
+
+            // Xóa nội dung cũ
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                emptyMsg.style.display = 'block';
+                document.getElementById('resultsTable').style.display = 'none';
+            } else {
+                emptyMsg.style.display = 'none';
+                document.getElementById('resultsTable').style.display = 'table';
+
+                // Data được lưu kiểu [Mới nhất, ... , Cũ nhất]
+                data.forEach((item, index) => {
+                    const row = document.createElement('tr');
+
+                    // Nếu là bản ghi mới nhất vừa thêm vào
+                    if (index === 0 && data.length > lastDataLength) {
+                        row.classList.add('new-record');
+                    }
+
+                    row.innerHTML = `
+                        <td class="prize-col">${item.prize}</td>
+                        <td class="number-col">${item.number}</td>
+                        <td>${item.time}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            lastDataLength = data.length;
+        }
+
+        // Cách 1: Lắng nghe sự kiện thay đổi Storage (Chỉ hoạt động tốt nếu chạy trên Server hoặc domain thật)
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) loadData();
+        });
+
+        // Cách 2: Polling (Quét liên tục) - An toàn nhất khi chạy file HTML local (file://)
+        setInterval(loadData, 1000); // Kiểm tra mỗi 1 giây
+
+        // Load lần đầu
+        loadData();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bàn Điều Khiển Quay Số</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #fbc02d;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            padding: 10px 30px;
+            border: 1px solid #fbc02d;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .slots {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .slot {
+            width: 100px;
+            height: 140px;
+            background: linear-gradient(180deg, #333, #000);
+            border: 4px solid #fbc02d;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 5rem;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+
+        button {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        button:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reset-btn {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            padding: 10px 20px;
+            background-color: transparent;
+            border: 1px solid #666;
+            color: #888;
+        }
+
+        .reset-btn:hover {
+            border-color: #d32f2f;
+            color: #d32f2f;
+        }
+
+        a {
+            color: #fbc02d;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+
+        .just-won {
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                color: #fff;
+                text-shadow: 0 0 20px #fbc02d;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Quay Số Trúng Thưởng</h1>
+    <div class="info-box" id="prizeInfo">Đang tải...</div>
+
+    <div class="slots">
+        <div class="slot" id="d1">0</div>
+        <div class="slot" id="d2">0</div>
+        <div class="slot" id="d3">0</div>
+        <div class="slot" id="d4">0</div>
+    </div>
+
+    <button id="spinBtn" onclick="spin()">QUAY NGAY</button>
+    <a href="ketqua.html" target="_blank">Mở trang Danh Sách Kết Quả >></a>
+
+    <button class="reset-btn" onclick="resetData()">Reset Dữ Liệu (Làm mới từ đầu)</button>
+
+    <script>
+        // CẤU HÌNH DANH SÁCH GIẢI (Thứ tự quay)
+        // Tổng cộng 19 giải
+        const prizeConfig = [];
+        // 10 Giải Khuyến Khích
+        for (let i = 1; i <= 10; i++) prizeConfig.push({ name: "Giải Khuyến Khích", type: 4 });
+        // 5 Giải Ba
+        for (let i = 1; i <= 5; i++) prizeConfig.push({ name: "Giải Ba", type: 3 });
+        // 3 Giải Nhì
+        for (let i = 1; i <= 3; i++) prizeConfig.push({ name: "Giải Nhì", type: 2 });
+        // 1 Giải Nhất
+        prizeConfig.push({ name: "Giải Nhất", type: 1 });
+
+        const STORAGE_KEY = 'luckyDrawData_v2';
+        let isSpinning = false;
+
+        function getStoredData() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        }
+
+        function updateUI() {
+            const history = getStoredData();
+            const currentTurn = history.length;
+            const infoEl = document.getElementById('prizeInfo');
+            const btn = document.getElementById('spinBtn');
+
+            if (currentTurn < prizeConfig.length) {
+                const prize = prizeConfig[currentTurn];
+                // Đếm xem đây là giải thứ mấy trong nhóm giải đó
+                let countInGroup = 1;
+                for (let i = 0; i < currentTurn; i++) {
+                    if (prizeConfig[i].name === prize.name) countInGroup++;
+                }
+
+                infoEl.textContent = `Đang quay: ${prize.name} (Lượt ${countInGroup})`;
+                btn.disabled = false;
+                btn.textContent = "QUAY NGAY";
+            } else {
+                infoEl.textContent = "Đã hoàn thành tất cả các giải!";
+                infoEl.style.color = "#fbc02d";
+                btn.disabled = true;
+                btn.textContent = "HẾT GIẢI";
+            }
+        }
+
+        // Khởi tạo
+        updateUI();
+
+        function generateUniqueNumber() {
+            const history = getStoredData();
+            const usedNumbers = new Set(history.map(h => h.number));
+            let numStr;
+            let safety = 0;
+
+            do {
+                // Random 0 - 3000
+                const n = Math.floor(Math.random() * 3001);
+                numStr = n.toString().padStart(4, '0');
+                safety++;
+                if (safety > 5000) return null; // Tránh treo
+            } while (usedNumbers.has(numStr));
+
+            return numStr;
+        }
+
+        function spin() {
+            if (isSpinning) return;
+            const history = getStoredData();
+            if (history.length >= prizeConfig.length) return;
+
+            const targetPrize = prizeConfig[history.length];
+            const resultNumber = generateUniqueNumber();
+
+            if (!resultNumber) {
+                alert("Hết số để quay!");
+                return;
+            }
+
+            isSpinning = true;
+            document.getElementById('spinBtn').disabled = true;
+
+            const slots = [
+                document.getElementById('d1'), document.getElementById('d2'),
+                document.getElementById('d3'), document.getElementById('d4')
+            ];
+
+            // 1. Chạy hiệu ứng số loạn xạ
+            const intervals = slots.map(slot => {
+                slot.classList.remove('just-won');
+                return setInterval(() => {
+                    slot.textContent = Math.floor(Math.random() * 10);
+                }, 50);
+            });
+
+            // 2. Logic dừng số (Cách nhau 2 giây)
+            // Số 1: Dừng sau 1s
+            // Số 2: Dừng sau 3s (1+2)
+            // Số 3: Dừng sau 5s (3+2)
+            // Số 4: Dừng sau 7s (5+2)
+
+            const delays = [1000, 3000, 5000, 7000];
+
+            delays.forEach((delay, index) => {
+                setTimeout(() => {
+                    clearInterval(intervals[index]);
+                    slots[index].textContent = resultNumber[index];
+                    slots[index].classList.add('just-won');
+
+                    // Nếu là số cuối cùng
+                    if (index === 3) {
+                        saveResult(targetPrize.name, resultNumber);
+                        isSpinning = false;
+                        setTimeout(() => {
+                            slots.forEach(s => s.classList.remove('just-won'));
+                            updateUI();
+                        }, 1000);
+                    }
+                }, delay);
+            });
+        }
+
+        function saveResult(prizeName, number) {
+            const history = getStoredData();
+            history.unshift({ // Thêm vào đầu danh sách
+                prize: prizeName,
+                number: number,
+                time: new Date().toLocaleTimeString()
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }
+
+        function resetData() {
+            if (confirm("Bạn có chắc chắn muốn xóa hết lịch sử quay số để chơi lại từ đầu?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                // Reset giao diện về 0000
+                document.querySelectorAll('.slot').forEach(s => s.textContent = '0');
+                updateUI();
+            }
+        }
+    </script>
+</body>
+
+</html>
